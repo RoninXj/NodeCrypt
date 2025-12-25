@@ -379,7 +379,7 @@ export function setupFileSend({
 
 // Handle files upload
 // 处理文件上传
-async function handleFilesUpload(files, onSend) {
+export async function handleFilesUpload(files, onSend) {
 	if (!files || files.length === 0) return;
 
 	const fileId = generateFileId();
@@ -620,11 +620,60 @@ function updateFileProgress(fileId) {
 						setTimeout(() => {
 							downloadBtn.classList.remove('animate-in');
 						}, 550);
+
+						// 自动触发媒体预览
+						autoPreviewMedia(fileId, element);
 					}, 200);
 				}
 			}
 		}
 	});
+}
+
+// 自动预览媒体文件
+// Auto preview media files
+async function autoPreviewMedia(fileId, element) {
+	const transfer = window.fileTransfers.get(fileId);
+	if (!transfer || transfer.status !== 'completed') return;
+
+	// 判断是发送还是接收
+	// 判断是否有数据卷 (如果是发送方，volumeData 是空的，只有接收方有)
+	// 如果是发送方，我们可以尝试从本地读取原始 Blob (如果有缓存) 或等待接收方
+	// 但通常“预览”是对接收方更有意义。
+	// 对于发送方，如果他们刚发完，我们也想看预览。
+
+	let volumes = transfer.volumeData;
+	// 如果发送方没有 volumeData，我们可能无法直接在 updateFileProgress 中预览，
+	// 除非我们在 handleFilesUpload 时保留了原始 Blob。
+	// 为了简化，我们先处理接收方的预览。
+	if (!volumes || volumes.length === 0) return;
+
+	const fileName = transfer.fileName;
+	const extension = fileName.split('.').pop().toLowerCase();
+	const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+	const videoExtensions = ['mp4', 'webm', 'ogg', 'mov'];
+
+	const isImage = imageExtensions.includes(extension);
+	const isVideo = videoExtensions.includes(extension);
+
+	if (!isImage && !isVideo) return;
+
+	try {
+		const previewArea = element.querySelector('.file-preview-area');
+		if (!previewArea) return;
+
+		const blob = await decompressToBlob(volumes);
+		const url = URL.createObjectURL(blob);
+
+		previewArea.style.display = 'block';
+		if (isImage) {
+			previewArea.innerHTML = `<img src="${url}" class="bubble-img" style="margin-top: 8px; border-radius: 8px; cursor: pointer;" onclick="window.showImageModal('${url}')">`;
+		} else {
+			previewArea.innerHTML = `<video src="${url}" controls class="bubble-video" style="margin-top: 8px; border-radius: 8px; max-width: 100%;"></video>`;
+		}
+	} catch (e) {
+		console.error('Auto preview failed:', e);
+	}
 }
 
 // Handle incoming file messages

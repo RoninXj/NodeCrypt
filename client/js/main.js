@@ -8,13 +8,15 @@ import {
 	setupFileSend,
 	handleFileMessage,
 	downloadFile,
-	decompressToBlob
+	decompressToBlob,
+	handleFilesUpload
 } from './util.file.js';
 
 // 从 util.image.js 中导入图片处理功能
 // Import image processing functions from util.image.js
 import {
-	setupImagePaste
+	setupImagePaste,
+	processImage
 } from './util.image.js';
 
 // 从 util.emoji.js 中导入设置表情选择器的函数
@@ -62,6 +64,7 @@ import {
 	addOtherMsg,          // 添加其他用户消息 / Add message from other users
 	addSystemMsg,         // 添加系统消息 / Add a system message
 	setupImagePreview,    // 设置图片预览功能 / Setup image preview
+	showImageModal,       // 显示图片模态框 / Show image modal
 	setupInputPlaceholder, // 设置输入框的占位提示 / Setup placeholder for input box
 	autoGrowInput         // 自动调整输入框高度 / Auto adjust input height
 } from './chat.js';
@@ -105,6 +108,7 @@ window.setupEmojiPicker = setupEmojiPicker;
 window.handleFileMessage = handleFileMessage;
 window.downloadFile = downloadFile;
 window.decompressToBlob = decompressToBlob;
+window.showImageModal = showImageModal;
 
 // 当 DOM 内容加载完成后执行初始化逻辑
 // Run initialization logic when the DOM content is fully loaded
@@ -280,13 +284,71 @@ window.addEventListener('DOMContentLoaded', () => {
 		sendButton.addEventListener('click', sendMessage);
 	}
 
+	// 提取通用的文件/媒体发送逻辑
+	// Extract common file/media sending logic
+	async function sendFilesDirectly(files) {
+		const rd = roomsData[activeRoomIndex];
+		if (!rd || !rd.chat || !files.length) return;
+
+		await handleFilesUpload(files, (message) => {
+			const userName = rd.myUserName || '';
+			const msgWithUser = { ...message, userName };
+			if (rd.privateChatTargetId) {
+				const targetClient = rd.chat.channel[rd.privateChatTargetId];
+				if (targetClient && targetClient.shared) {
+					const clientMessagePayload = {
+						a: 'm',
+						t: msgWithUser.type + '_private',
+						d: msgWithUser
+					};
+					const encryptedClientMessage = rd.chat.encryptClientMessage(clientMessagePayload, targetClient.shared);
+					const serverRelayPayload = {
+						a: 'c',
+						p: encryptedClientMessage,
+						c: rd.privateChatTargetId
+					};
+					const encryptedMessageForServer = rd.chat.encryptServerMessage(serverRelayPayload, rd.chat.serverShared);
+					rd.chat.sendMessage(encryptedMessageForServer);
+					if (msgWithUser.type === 'file_start') {
+						addMsg(msgWithUser, false, 'file_private');
+					}
+				} else {
+					addSystemMsg(`${t('system.private_file_failed', 'Cannot send private file to')} ${rd.privateChatTargetName}.`)
+				}
+			} else {
+				rd.chat.sendChannelMessage(msgWithUser.type, msgWithUser);
+				if (msgWithUser.type === 'file_start') {
+					addMsg(msgWithUser, false, 'file');
+				}
+			}
+		});
+	}
+
+	// 设置 "+" 按钮发送媒体功能
+	// Setup "+" button for sending media
+	const plusBtn = $id('chat-plus-btn');
+	const mediaInput = $id('media-direct-input');
+	if (plusBtn && mediaInput) {
+		plusBtn.onclick = () => mediaInput.click();
+		mediaInput.onchange = async () => {
+			const files = Array.from(mediaInput.files);
+			if (files.length > 0) {
+				await sendFilesDirectly(files);
+			}
+			mediaInput.value = '';
+		};
+	}
+
 	// 设置发送文件功能
 	// Setup file sending functionality
 	setupFileSend({
 		inputSelector: '.input-message-input', // 消息输入框选择器 / Message input selector
 		attachBtnSelector: '.chat-attach-btn', // 附件按钮选择器 / Attach button selector
-		fileInputSelector: '.new-message-wrapper input[type="file"]', // 文件输入框选择器 / File input selector
+		fileInputSelector: '.new-message-wrapper input[type="file"].input-hidden', // 文件输入框选择器 / File input selector
 		onSend: (message) => {
+			// 这里保留原有逻辑，或者也可以重构成调用 sendFilesDirectly
+			// 不过 setupFileSend 内部已经处理了 handleFilesUpload 的调用，
+			// 所以只需要传入消息处理逻辑即可
 			const rd = roomsData[activeRoomIndex];
 			if (rd && rd.chat) {
 				const userName = rd.myUserName || '';
