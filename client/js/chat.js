@@ -112,12 +112,13 @@ export function addMsg(text, isHistory = false, msgType = 'text', timestamp = nu
 		// Add file-bubble class for special timestamp positioning
 		className += ' file-bubble';
 
-		// 尝试立即触发预览（如果是发送方且本地已有数据）
-		if (text && text.fileId) {
+		// 尝试立即触发预览（确保不论历史还是新消息，只要本地有数据就显示）
+		const fileId = text?.fileId || (typeof text === 'object' ? text.fileId : null);
+		if (fileId) {
 			setTimeout(() => {
-				const el = document.querySelector(`[data-file-id="${text.fileId}"]`);
+				const el = document.querySelector(`[data-file-id="${fileId}"]`);
 				if (el && window.autoPreviewMedia) {
-					window.autoPreviewMedia(text.fileId, el);
+					window.autoPreviewMedia(fileId, el);
 				}
 			}, 100);
 		}
@@ -199,6 +200,17 @@ export function addOtherMsg(msg, userName = '', avatar = '', isHistory = false, 
 	} else if (msgType === 'file' || msgType === 'file_private') {
 		// Handle file messages
 		contentHtml = renderFileMessage(msg, false);
+
+		// 尝试立即触发预览
+		const fileId = msg?.fileId || (typeof msg === 'object' ? msg.fileId : null);
+		if (fileId) {
+			setTimeout(() => {
+				const el = document.querySelector(`[data-file-id="${fileId}"]`);
+				if (el && window.autoPreviewMedia) {
+					window.autoPreviewMedia(fileId, el);
+				}
+			}, 100);
+		}
 	} else {
 		contentHtml = textToHTML(msg)
 	}
