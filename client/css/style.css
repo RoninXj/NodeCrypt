@@ -566,6 +566,28 @@ npx browserify ChatCrypt.cjs -o ChatCrypt.js .language-current {
 	z-index: 1;
 }
 
+.bubble-video {
+	max-width: 100%;
+	max-height: 400px;
+	border-radius: 8px;
+	margin: 5px 0;
+	display: block;
+	background: #000;
+	aspect-ratio: auto;
+}
+
+.file-download-btn.show {
+	opacity: 1 !important;
+	transform: scale(1) translateY(0) !important;
+	display: flex !important;
+}
+
+.bubble.private-message .file-message .file-name,
+.bubble.private-message .file-message .file-meta,
+.bubble.private-message .file-message .file-status {
+	color: #fff !important;
+}
+
 .bubble {
 	max-width: 80%;
 	padding: 12px 18px;
@@ -1119,18 +1141,22 @@ npx browserify ChatCrypt.cjs -o ChatCrypt.js .language-current {
 .file-message {
 	overflow: hidden;
 	transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-	max-width: 320px;
 	width: 100%;
+	min-width: 280px;
+	max-width: 450px;
 	position: relative;
+	background: rgba(255, 255, 255, 0.5);
+	border-radius: 12px;
 }
 
 
 .file-main-content {
 	display: flex;
 	align-items: center;
-	padding: 3px 3px;
+	padding: 5px;
 	gap: 12px;
-	max-width: 200px;
+	width: 100%;
+	box-sizing: border-box;
 }
 
 .file-info {

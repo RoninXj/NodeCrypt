@@ -414,7 +414,8 @@ export async function handleFilesUpload(files, onSend) {
 				totalVolumes: volumes.length,
 				sentVolumes: 0,
 				status: 'sending',
-				originalHash
+				originalHash,
+				localFile: file // 保存本地文件引用以供预览 / Save local file reference for preview
 			};
 
 			window.fileTransfers.set(fileId, fileTransfer);
@@ -575,8 +576,9 @@ function updateFileProgress(fileId) {
 			if (progressBar) progressBar.style.width = `${progress}%`;
 			if (statusText) statusText.textContent = `Sending ${transfer.sentVolumes}/${transfer.totalVolumes}`;
 			if (downloadBtn) {
-				downloadBtn.classList.remove('show', 'animate-in');
-				downloadBtn.style.display = 'none';
+				downloadBtn.classList.add('show');
+				downloadBtn.style.display = 'flex';
+				downloadBtn.style.opacity = '0.6'; // 发送中稍微变淡 / Dim slightly while sending
 			}
 		} else if (transfer.status === 'receiving') {
 			const progress = (transfer.receivedVolumes.size / transfer.totalVolumes) * 100;
@@ -587,8 +589,9 @@ function updateFileProgress(fileId) {
 			if (progressBar) progressBar.style.width = `${progress}%`;
 			if (statusText) statusText.textContent = `Receiving ${transfer.receivedVolumes.size}/${transfer.totalVolumes}`;
 			if (downloadBtn) {
-				downloadBtn.classList.remove('show', 'animate-in');
-				downloadBtn.style.display = 'none';
+				downloadBtn.classList.add('show');
+				downloadBtn.style.display = 'flex';
+				downloadBtn.style.opacity = '0.6';
 			}
 		} else if (transfer.status === 'completed') {
 			// 传输完成时的动画序列
@@ -621,32 +624,39 @@ function updateFileProgress(fileId) {
 							downloadBtn.classList.remove('animate-in');
 						}, 550);
 
-						// 自动触发媒体预览
-						autoPreviewMedia(fileId, element);
 					}, 200);
 				}
 			}
 		}
 	});
+
+	// 对所有相关的 DOM 元素确保触发预览
+	setTimeout(() => {
+		const elements = document.querySelectorAll(`[data-file-id="${fileId}"]`);
+		elements.forEach(el => autoPreviewMedia(fileId, el));
+	}, 100);
 }
 
 // 自动预览媒体文件
 // Auto preview media files
-async function autoPreviewMedia(fileId, element) {
+export async function autoPreviewMedia(fileId, element) {
 	const transfer = window.fileTransfers.get(fileId);
-	if (!transfer || transfer.status !== 'completed') return;
+	if (!transfer) return;
 
-	// 判断是发送还是接收
-	// 判断是否有数据卷 (如果是发送方，volumeData 是空的，只有接收方有)
-	// 如果是发送方，我们可以尝试从本地读取原始 Blob (如果有缓存) 或等待接收方
-	// 但通常“预览”是对接收方更有意义。
-	// 对于发送方，如果他们刚发完，我们也想看预览。
+	// 如果已经在传输中或已完成，尝试显示预览
+	// For sending files, we have localFile. For received files, we have volumeData (after completion)
+	let sourceUrl = null;
+	let isLocal = false;
 
-	let volumes = transfer.volumeData;
-	// 如果发送方没有 volumeData，我们可能无法直接在 updateFileProgress 中预览，
-	// 除非我们在 handleFilesUpload 时保留了原始 Blob。
-	// 为了简化，我们先处理接收方的预览。
-	if (!volumes || volumes.length === 0) return;
+	if (transfer.localFile) {
+		sourceUrl = URL.createObjectURL(transfer.localFile);
+		isLocal = true;
+	} else if (transfer.status === 'completed' && transfer.volumeData && transfer.volumeData.length > 0) {
+		const blob = await decompressToBlob(transfer.volumeData);
+		sourceUrl = URL.createObjectURL(blob);
+	}
+
+	if (!sourceUrl) return;
 
 	const fileName = transfer.fileName;
 	const extension = fileName.split('.').pop().toLowerCase();
@@ -662,14 +672,11 @@ async function autoPreviewMedia(fileId, element) {
 		const previewArea = element.querySelector('.file-preview-area');
 		if (!previewArea) return;
 
-		const blob = await decompressToBlob(volumes);
-		const url = URL.createObjectURL(blob);
-
 		previewArea.style.display = 'block';
 		if (isImage) {
-			previewArea.innerHTML = `<img src="${url}" class="bubble-img" style="margin-top: 8px; border-radius: 8px; cursor: pointer;" onclick="window.showImageModal('${url}')">`;
+			previewArea.innerHTML = `<img src="${sourceUrl}" class="bubble-img" style="margin-top: 8px; border-radius: 8px; cursor: pointer;" onclick="window.showImageModal('${sourceUrl}')">`;
 		} else {
-			previewArea.innerHTML = `<video src="${url}" controls class="bubble-video" style="margin-top: 8px; border-radius: 8px; max-width: 100%;"></video>`;
+			previewArea.innerHTML = `<video src="${sourceUrl}" controls class="bubble-video" style="margin-top: 8px; border-radius: 8px; max-width: 100%;"></video>`;
 		}
 	} catch (e) {
 		console.error('Auto preview failed:', e);

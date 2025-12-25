@@ -9,7 +9,8 @@ import {
 	handleFileMessage,
 	downloadFile,
 	decompressToBlob,
-	handleFilesUpload
+	handleFilesUpload,
+	autoPreviewMedia
 } from './util.file.js';
 
 // 从 util.image.js 中导入图片处理功能
@@ -109,6 +110,7 @@ window.handleFileMessage = handleFileMessage;
 window.downloadFile = downloadFile;
 window.decompressToBlob = decompressToBlob;
 window.showImageModal = showImageModal;
+window.autoPreviewMedia = autoPreviewMedia;
 
 // 当 DOM 内容加载完成后执行初始化逻辑
 // Run initialization logic when the DOM content is fully loaded

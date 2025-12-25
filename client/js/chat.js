@@ -56,11 +56,11 @@ export function addMsg(text, isHistory = false, msgType = 'text', timestamp = nu
 			msgType,
 			timestamp: ts
 		})
-	}	const chatArea = $id('chat-area');
+	} const chatArea = $id('chat-area');
 	if (!chatArea) return;
 	let className = 'bubble me' + (msgType.includes('_private') ? ' private-message' : '');
 	const date = new Date(ts);
-	const time = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0');	let contentHtml = '';	if (msgType === 'image' || msgType === 'image_private') {
+	const time = date.getHours().toString().padStart(2, '0') + ':' + date.getMinutes().toString().padStart(2, '0'); let contentHtml = ''; if (msgType === 'image' || msgType === 'image_private') {
 		// Handle image messages (can contain both text and images)
 		if (typeof text === 'object' && text.images && Array.isArray(text.images)) {
 			// New multi-image format: {text: "", images: ["data:image...", "data:image..."]}
@@ -69,7 +69,7 @@ export function addMsg(text, isHistory = false, msgType = 'text', timestamp = nu
 				const safeImgSrc = escapeHTML(imgData).replace(/javascript:/gi, '');
 				return `<img src="${safeImgSrc}" alt="image" class="bubble-img">`;
 			}).join('');
-					if (messageText && imageElements) {
+			if (messageText && imageElements) {
 				// Mixed content: text + images
 				contentHtml = `<div class="mixed-content">
 					<div class="message-text">${messageText}</div>
@@ -86,7 +86,7 @@ export function addMsg(text, isHistory = false, msgType = 'text', timestamp = nu
 			// Legacy single image format: {text: "", image: "data:image..."}
 			const safeImgSrc = escapeHTML(text.image).replace(/javascript:/gi, '');
 			const messageText = text.text ? textToHTML(text.text) : '';
-			
+
 			if (messageText) {
 				// Mixed content: text + image
 				contentHtml = `<div class="mixed-content">
@@ -111,6 +111,16 @@ export function addMsg(text, isHistory = false, msgType = 'text', timestamp = nu
 		contentHtml = renderFileMessage(text, true);
 		// Add file-bubble class for special timestamp positioning
 		className += ' file-bubble';
+
+		// 尝试立即触发预览（如果是发送方且本地已有数据）
+		if (text && text.fileId) {
+			setTimeout(() => {
+				const el = document.querySelector(`[data-file-id="${text.fileId}"]`);
+				if (el && window.autoPreviewMedia) {
+					window.autoPreviewMedia(text.fileId, el);
+				}
+			}, 100);
+		}
 	} else {
 		contentHtml = textToHTML(text)
 	}
@@ -140,7 +150,7 @@ export function addOtherMsg(msg, userName = '', avatar = '', isHistory = false, 
 	if (!chatArea) return;
 	const bubbleWrap = createElement('div', {
 		class: 'bubble-other-wrap'
-	});	let contentHtml = '';	if (msgType === 'image' || msgType === 'image_private') {
+	}); let contentHtml = ''; if (msgType === 'image' || msgType === 'image_private') {
 		// Handle image messages (can contain both text and images)
 		if (typeof msg === 'object' && msg.images && Array.isArray(msg.images)) {
 			// New multi-image format: {text: "", images: ["data:image...", "data:image..."]}
@@ -149,7 +159,7 @@ export function addOtherMsg(msg, userName = '', avatar = '', isHistory = false, 
 				const safeImgSrc = escapeHTML(imgData).replace(/javascript:/gi, '');
 				return `<img src="${safeImgSrc}" alt="image" class="bubble-img">`;
 			}).join('');
-					if (messageText && imageElements) {
+			if (messageText && imageElements) {
 				// Mixed content: text + images
 				contentHtml = `<div class="mixed-content">
 					<div class="message-text">${messageText}</div>
@@ -166,7 +176,7 @@ export function addOtherMsg(msg, userName = '', avatar = '', isHistory = false, 
 			// Legacy single image format: {text: "", image: "data:image..."}
 			const safeImgSrc = escapeHTML(msg.image).replace(/javascript:/gi, '');
 			const messageText = msg.text ? textToHTML(msg.text) : '';
-			
+
 			if (messageText) {
 				// Mixed content: text + image
 				contentHtml = `<div class="mixed-content">
@@ -188,7 +198,8 @@ export function addOtherMsg(msg, userName = '', avatar = '', isHistory = false, 
 		contentHtml = `<video src="${safeVideoSrc}" controls class="bubble-video"></video>`;
 	} else if (msgType === 'file' || msgType === 'file_private') {
 		// Handle file messages
-		contentHtml = renderFileMessage(msg, false);	} else {
+		contentHtml = renderFileMessage(msg, false);
+	} else {
 		contentHtml = textToHTML(msg)
 	}
 	const safeUserName = escapeHTML(userName);
@@ -240,7 +251,7 @@ export function updateChatInputStyle() {
 	const chatInputArea = $('.chat-input-area');
 	const placeholder = $('.input-field-placeholder');
 	const inputMessageInput = $('.input-message-input');
-	if (!chatInputArea || !placeholder || !inputMessageInput) return;	if (rd && rd.privateChatTargetId) {
+	if (!chatInputArea || !placeholder || !inputMessageInput) return; if (rd && rd.privateChatTargetId) {
 		addClass(chatInputArea, 'private-mode');
 		addClass(inputMessageInput, 'private-mode');
 		placeholder.textContent = `${t('ui.private_message_to', 'Private Message to')} ${escapeHTML(rd.privateChatTargetName)}`
@@ -256,7 +267,7 @@ export function updateChatInputStyle() {
 // Setup image preview functionality
 // 设置图片预览功能
 export function setupImagePreview() {
-	on($id('chat-area'), 'click', function(e) {
+	on($id('chat-area'), 'click', function (e) {
 		const target = e.target;
 		if (target.tagName === 'IMG' && target.closest('.bubble-content')) {
 			showImageModal(target.src)
@@ -282,10 +293,10 @@ export function showImageModal(src) {
 		lastY = 0;
 	let offsetX = 0,
 		offsetY = 0;
-	img.ondragstart = function(e) {
+	img.ondragstart = function (e) {
 		e.preventDefault()
 	};
-	on(img, 'wheel', function(ev) {
+	on(img, 'wheel', function (ev) {
 		ev.preventDefault();
 		const prevScale = scale;
 		scale += ev.deltaY < 0 ? 0.1 : -0.1;
@@ -301,7 +312,7 @@ export function showImageModal(src) {
 		img.style.transform = `translate(${offsetX}px,${offsetY}px)scale(${scale})`;
 		img.style.cursor = scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in'
 	}
-	on(img, 'mousedown', function(ev) {
+	on(img, 'mousedown', function (ev) {
 		if (scale <= 1) return;
 		isDragging = true;
 		lastX = ev.clientX;
@@ -328,7 +339,7 @@ export function showImageModal(src) {
 	}
 	on(window, 'mousemove', onMouseMove);
 	on(window, 'mouseup', onMouseUp);
-	on(img, 'dblclick', function() {
+	on(img, 'dblclick', function () {
 		scale = 1;
 		offsetX = 0;
 		offsetY = 0;
@@ -347,6 +358,15 @@ export function showImageModal(src) {
 // Render file message content
 // 渲染文件消息内容
 function renderFileMessage(fileData, isSender) {
+	// 如果 fileData 是字符串，尝试解析为对象
+	if (typeof fileData === 'string') {
+		try {
+			fileData = JSON.parse(fileData);
+		} catch (e) {
+			console.error('Failed to parse fileData:', e);
+		}
+	}
+
 	const {
 		fileId,
 		fileName,
@@ -355,7 +375,7 @@ function renderFileMessage(fileData, isSender) {
 		fileCount,
 		isArchive
 	} = fileData;
-	
+
 	// For archive files, show file count and total size
 	let displayName, displayMeta;
 	if (isArchive && fileCount) {
@@ -366,7 +386,7 @@ function renderFileMessage(fileData, isSender) {
 		displayName = fileName;
 		displayMeta = formatFileSize(originalSize);
 	}
-	
+
 	const safeDisplayName = escapeHTML(displayName);
 
 	// Check actual file transfer status
@@ -375,7 +395,7 @@ function renderFileMessage(fileData, isSender) {
 	let progressWidth = '0%';
 	let downloadBtnStyle = 'display: none;';
 	let showProgress = false;
-	
+
 	if (transfer) {
 		if (transfer.status === 'sending') {
 			const progress = (transfer.sentVolumes / transfer.totalVolumes) * 100;
@@ -388,14 +408,17 @@ function renderFileMessage(fileData, isSender) {
 			statusText = `Receiving ${transfer.receivedVolumes.size}/${transfer.totalVolumes}`;
 			showProgress = true;
 		} else if (transfer.status === 'completed') {
-			// 完成时不显示任何状态，只显示下载按钮
-			downloadBtnStyle = isSender ? 'display: none;' : 'display: flex;';
-		}	} else if (isSender) {
-		// 发送方历史消息，不显示状态和下载按钮
-		downloadBtnStyle = 'display: none;';
+			// 完成时始终显示下载按钮
+			downloadBtnStyle = 'display: flex;';
+		}
 	} else {
-		// 接收方历史消息，直接显示下载按钮（带动画效果）
-		downloadBtnStyle = 'display: flex;';
+		// 历史消息或其他状态，始终显示下载按钮
+		downloadBtnStyle = 'display: flex; shadow: 0 4px 12px rgba(0,0,0,0.1);';
+	}
+
+	// 如果是发送方，在发送中也允许看到下载按钮（实际上是预览/状态占位）
+	if (isSender && transfer && transfer.status === 'sending') {
+		downloadBtnStyle = 'display: flex; opacity: 0.6;';
 	}
 	// Different icon for archives vs single files
 	const fileIcon = isArchive ? '📦' : '📄';
@@ -405,7 +428,7 @@ function renderFileMessage(fileData, isSender) {
 		const extension = fileName.split('.').pop().toLowerCase();
 		const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
 		const videoExtensions = ['mp4', 'webm', 'ogg', 'mov'];
-		
+
 		if (imageExtensions.includes(extension) || videoExtensions.includes(extension)) {
 			try {
 				const combinedData = transfer.volumeData.map(v => base64ToArrayBuffer(v));
@@ -416,7 +439,7 @@ function renderFileMessage(fileData, isSender) {
 					compressed.set(data, offset);
 					offset += data.length;
 				}
-				
+
 				// Warning: This is synchronous-ish but necessary for preview
 				// In a real app, we'd want to handle decompression as part of the preview logic
 				// For now, let's keep the file-message structure and maybe add a "preview" button or automatic preview if small
@@ -464,7 +487,7 @@ export function autoGrowInput() {
 // 处理粘贴为纯文本
 function handlePasteAsPlainText(element) {
 	if (!element) return;
-	on(element, 'paste', function(e) {
+	on(element, 'paste', function (e) {
 		e.preventDefault();
 		let text = '';
 		if (e.clipboardData || window.clipboardData) {
